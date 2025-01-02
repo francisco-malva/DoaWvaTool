@@ -32,7 +32,23 @@ return;
 
 void PrintUsageAndDie()
 {
-    Console.WriteLine("Usage: DoaWVATool mode");
+    Console.WriteLine("Usage: DoaWVATool <mode> <input> <output>");
+    Console.WriteLine();
+    Console.WriteLine("Modes:");
+    Console.WriteLine("  pack     - Creates a WVA file from the specified manifest file.");
+    Console.WriteLine("             Syntax: DoaWVATool pack <manifest_path> <output_wva_file>");
+    Console.WriteLine("             Example: DoaWVATool pack manifest.json output.wva");
+    Console.WriteLine();
+    Console.WriteLine("  unpack   - Extracts files from a WVA archive to a specified directory and creates an accompanying JSON manifest file.");
+    Console.WriteLine("             Syntax: DoaWVATool unpack <input_wva_file> <output_directory>");
+    Console.WriteLine("             Example: DoaWVATool unpack input.wva extracted_files/");
+    Console.WriteLine();
+    Console.WriteLine("Arguments:");
+    Console.WriteLine("  <mode>            - The operation mode, either 'pack' or 'unpack'.");
+    Console.WriteLine("  <input>           - The input file or manifest (for 'pack') or the WVA file to unpack.");
+    Console.WriteLine("  <output>          - The output file (for 'pack') or the directory (for 'unpack').");
+    Console.WriteLine();
+    Console.WriteLine("Error: Invalid or insufficient arguments provided.");
     Environment.Exit(1);
 }
 
