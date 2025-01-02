@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DoaWVATool": {
+      "commandName": "Project",
+      "commandLineArgs": "pack\r\nenv_AG/env_AG.json\r\nenv_AG.wva"
+    }
+  }
+}
