@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace DoaWVATool
+namespace DoaWVATool.Wva.Se
 {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct WaveFormatEx

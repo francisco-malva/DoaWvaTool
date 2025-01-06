@@ -1,8 +1,8 @@
-﻿namespace DoaWVATool;
+﻿namespace DoaWVATool.Wva.Se;
 
 internal class SoundEffect
 {
-    private SoundEffectHeader _header;
+    public SoundEffectHeader Header;
     private byte[]? _data;
 
 
@@ -11,10 +11,10 @@ internal class SoundEffect
     {
         var se = new SoundEffect
         {
-            _header = br.ReadUnmanaged<SoundEffectHeader>()
+            Header = br.ReadUnmanaged<SoundEffectHeader>()
         };
 
-        se._data = br.ReadBytes(se._header.DataSize);
+        se._data = br.ReadBytes(se.Header.DataSize);
 
         return se;
     }
@@ -35,23 +35,17 @@ internal class SoundEffect
                     //Ignore
                     break;
                 case "fmt ":
-                    unsafe
-                    {
-                        var sz = br.ReadInt32();
-                        fixed (byte* ptr = se._header.WaveFormatDataBuffer)
-                        {
-                            _ = br.Read(new Span<byte>(ptr, sz));
-                        }
-                        break;
-                    }
+                    var sz = br.ReadInt32();
+                    se.Header.WaveFormatData = br.ReadUnmanaged<WavFormatData>(sz);
+                    break;
                 case "data":
-                    se._header.DataSize = br.ReadInt32();
-                    se._data = br.ReadBytes(se._header.DataSize);
+                    se.Header.DataSize = br.ReadInt32();
+                    se._data = br.ReadBytes(se.Header.DataSize);
                     break;
             }
 
         }
-            
+
 
         return se;
     }
@@ -61,7 +55,7 @@ internal class SoundEffect
         using var br = new BinaryReader(File.OpenRead(wavFilePath));
         return FromWav(br);
     }
-        
+
 
 
     public void WriteAsWav(BinaryWriter bw)
@@ -77,16 +71,13 @@ internal class SoundEffect
 
         bw.Write4Cc("WAVE");
         bw.Write4Cc("fmt ");
-        bw.Write(28);
+      
         unsafe
         {
-            fixed (byte* ptr = _header.WaveFormatDataBuffer)
-            {
-                bw.Write(new Span<byte>(ptr, 28));
-            }
-                
+            bw.Write(sizeof(WavFormatData));
+            bw.WriteUnmanaged(Header.WaveFormatData);
         }
-           
+
         bw.Write4Cc("data");
         bw.Write(_data.Length);
         bw.Write(_data);
@@ -112,7 +103,7 @@ internal class SoundEffect
             throw new ArgumentException("_data should not be null!");
         }
         var offset = bw.BaseStream.Position;
-        bw.WriteUnmanaged(_header);
+        bw.WriteUnmanaged(Header);
         bw.Write(_data);
 
         return offset;

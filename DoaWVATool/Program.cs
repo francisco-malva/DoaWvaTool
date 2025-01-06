@@ -1,4 +1,4 @@
-﻿using DoaWVATool;
+﻿using DoaWVATool.Wva;
 
 if (args.Length < 1)
 {
@@ -9,12 +9,15 @@ if (args.Length < 1)
 
 try
 {
-    switch (args[0].Trim().ToLower())
+
+    var fileInfo = new FileInfo(args[0]);
+
+    switch (fileInfo.Extension)
     {
-        case "pack":
+        case ".json":
             PackWva(args);
             break;
-        case "unpack":
+        case ".wva":
             UnpackWva(args);
             break;
         default:
@@ -32,48 +35,57 @@ return;
 
 void PrintUsageAndDie()
 {
-    Console.WriteLine("Usage: DoaWVATool <mode> <input> <output>");
+    Console.WriteLine("Usage: DoaWVATool <input> [output]");
     Console.WriteLine();
-    Console.WriteLine("Modes:");
-    Console.WriteLine("  pack     - Creates a WVA file from the specified manifest file.");
-    Console.WriteLine("             Syntax: DoaWVATool pack <manifest_path> <output_wva_file>");
-    Console.WriteLine("             Example: DoaWVATool pack manifest.json output.wva");
+    Console.WriteLine("Description:");
+    Console.WriteLine("  This tool packs a JSON manifest into a WVA file or unpacks a WVA file to a directory.");
     Console.WriteLine();
-    Console.WriteLine("  unpack   - Extracts files from a WVA archive to a specified directory and creates an accompanying JSON manifest file.");
-    Console.WriteLine("             Syntax: DoaWVATool unpack <input_wva_file> <output_directory>");
-    Console.WriteLine("             Example: DoaWVATool unpack input.wva extracted_files/");
+    Console.WriteLine("Input File Types:");
+    Console.WriteLine("  .json  - Packs the manifest file into a WVA file.");
+    Console.WriteLine("           Example: DoaWVATool manifest.json [output.wva]");
+    Console.WriteLine();
+    Console.WriteLine("  .wva   - Unpacks the WVA file to the specified directory.");
+    Console.WriteLine("           Example: DoaWVATool input.wva [extracted_files/]");
     Console.WriteLine();
     Console.WriteLine("Arguments:");
-    Console.WriteLine("  <mode>            - The operation mode, either 'pack' or 'unpack'.");
-    Console.WriteLine("  <input>           - The input file or manifest (for 'pack') or the WVA file to unpack.");
-    Console.WriteLine("  <output>          - The output file (for 'pack') or the directory (for 'unpack').");
+    Console.WriteLine("  <input>   - The input file (JSON manifest for packing or WVA file for unpacking).");
+    Console.WriteLine("  [output]  - Optional. The output file path for packing or the directory for unpacking.");
+    Console.WriteLine("              Defaults to:");
+    Console.WriteLine("                - For packing: <input_name>_packed.wva");
+    Console.WriteLine("                - For unpacking: A folder named after the input file.");
     Console.WriteLine();
     Console.WriteLine("Error: Invalid or insufficient arguments provided.");
+    Console.WriteLine("Press any key to exit...");
+    Console.ReadKey();
     Environment.Exit(1);
 }
 
+
 void UnpackWva(IReadOnlyList<string> args)
 {
-    if (args.Count < 3)
-    {
-        PrintUsageAndDie();
-    }
+    var fileInfo = new FileInfo(args[0]);
+    var fileName = (fileInfo.Name).Replace(fileInfo.Extension, string.Empty);
 
-    Console.WriteLine($"Unpacking {args[1]} into {args[2]}...");
-    var file = WvaFile.FromFile(args[1]);
-    file.UnpackToDirectory(args[2]);
+    var dir = args.Count < 2 ? $"./{fileName}" : args[1];
+
+    Console.WriteLine($"Unpacking {args[0]} into {dir}...");
+    var file = WvaFile.FromFile(args[0]);
+    file.UnpackToDirectory(dir);
 }
 
 void PackWva(IReadOnlyList<string> args)
 {
-    if (args.Count < 3)
-    {
-        PrintUsageAndDie();
-    }
+    var fileInfo = new FileInfo(args[0]);
+    var outFilePath = args.Count < 2
+        ? $"./{(fileInfo.Name)
+            .Replace(fileInfo.Extension, ".wva")
+            .Replace("_manifest", "_packed")}"
+        : args[1];
 
-    Console.WriteLine($"Packing {args[1]} into {args[2]}...");
-    var file = WvaFile.FromManifest(args[1]);
 
-    file.PackToFile(args[2]);
+    Console.WriteLine($"Packing {args[0]} into {outFilePath}...");
+    var file = WvaFile.FromManifest(args[0]);
+
+    file.PackToFile(outFilePath);
     Console.WriteLine("Packing completed successfully!");
 }

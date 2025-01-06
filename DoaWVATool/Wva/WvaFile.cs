@@ -1,8 +1,16 @@
-﻿using System.Runtime.InteropServices;
+﻿using DoaWVATool.Wva.Se;
 using System.Text.Json;
 
-namespace DoaWVATool
+namespace DoaWVATool.Wva
 {
+
+    public class SoundEffectManifest
+    {
+        public string Path { get; set; } = string.Empty;
+        public double LoopStartSeconds { get; set; }
+        public double LoopEndSeconds { get; set; }
+    }
+
     internal class WvaFile
     {
         public readonly List<SoundEffect?> SoundEffects = [];
@@ -29,7 +37,7 @@ namespace DoaWVATool
                     continue;
                 }
 
-               
+
 
                 var curOffset = br.BaseStream.Position;
 
@@ -87,20 +95,29 @@ namespace DoaWVATool
                 Directory.CreateDirectory(path);
             }
 
-            var manifest = new string?[SoundEffects.Count];
+            var manifest = new SoundEffectManifest?[SoundEffects.Count];
 
             for (var i = 0; i < SoundEffects.Count; ++i)
             {
                 var fullPath = $"{path}/{Name}_{i + 1}.wav";
 
                 SoundEffects[i]?.WriteToWavFile(fullPath);
-                manifest[i] = SoundEffects[i] == null ? null : Path.GetRelativePath(path, fullPath);
+
+                if (SoundEffects[i] != null)
+                {
+                    manifest[i] = new SoundEffectManifest
+                    {
+                        Path = Path.GetRelativePath(path, fullPath),
+                        LoopStartSeconds = SoundEffects[i]!.Header.LoopStartSeconds,
+                        LoopEndSeconds = SoundEffects[i]!.Header.LoopEndSeconds
+                    };
+                }
 
 
-                Console.WriteLine(manifest[i] == null ? $"Unpacked sound effect from slot {i} into {fullPath}" : $"Slot {i}contained no sound effect, skipping...");
+                Console.WriteLine(manifest[i] != null ? $"Unpacked sound effect from slot {i} into {fullPath}" : $"Slot {i} contained no sound effect, skipping...");
             }
 
-            File.WriteAllText($"{path}/{Name}.json", JsonSerializer.Serialize(manifest, JsonSettings));
+            File.WriteAllText($"{path}/{Name}_manifest.json", JsonSerializer.Serialize(manifest, JsonSettings));
 
         }
 
@@ -125,32 +142,29 @@ namespace DoaWVATool
 
             var manifestDir = Path.GetFullPath(Path.GetDirectoryName(manifestPath) ?? throw new InvalidOperationException("Manifest path resolved to null!"));
 
-            var soundEffects = JsonSerializer.Deserialize<string?[]>(File.ReadAllText(manifestPath)) ?? throw new InvalidOperationException("Manifest resolved to null!");
+            var soundEffects = JsonSerializer.Deserialize<SoundEffectManifest?[]>(File.ReadAllText(manifestPath)) ?? throw new InvalidOperationException("Manifest resolved to null!");
 
 
-            foreach (var soundEffectPath in soundEffects)
+            foreach (var soundEffectManifest in soundEffects)
             {
-                wvaFile.SoundEffects.Add(soundEffectPath == null
-                    ? null
-                    : SoundEffect.FromWavFile(Path.GetFullPath(soundEffectPath, manifestDir)));
+
+                if (soundEffectManifest == null)
+                {
+                    wvaFile.SoundEffects.Add(null);
+                    continue;
+                }
+
+                var soundEffect = SoundEffect.FromWavFile(Path.GetFullPath(soundEffectManifest!.Path, manifestDir));
+
+                soundEffect.Header.LoopStart = (uint)(soundEffectManifest.LoopStartSeconds *
+                                                      soundEffect.Header.WaveFormatData.WaveFormat.nSamplesPerSec);
+                soundEffect.Header.LoopEnd = (uint)(soundEffectManifest.LoopEndSeconds *
+                                                      soundEffect.Header.WaveFormatData.WaveFormat.nSamplesPerSec);
+
+                wvaFile.SoundEffects.Add(soundEffect);
             }
 
             return wvaFile;
         }
-    }
-
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct WavFormatData
-    {
-        public WaveFormatEx WaveFormat;
-        public ushort ExtraData;
-    }
-
-    [StructLayout(LayoutKind.Explicit)]
-    public struct SoundEffectHeader
-    {
-        [FieldOffset(0)] public int DataSize;
-        [FieldOffset(4)] public WavFormatData WaveFormatData;
-        [FieldOffset(4)] public unsafe fixed byte WaveFormatDataBuffer[28];
     }
 }
